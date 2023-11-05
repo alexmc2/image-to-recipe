@@ -55,7 +55,7 @@ def generate_recipe(ingredients):
                 with recipes and instructions as well as the recipe.
                 
                 If the {ingredients} are less than 3, feel free to add a few more
-                as long as they will compliment the healthy meal.
+                as long as they will complement the healthy meal.
                 
             
                 Make sure to format your answer as follows:
