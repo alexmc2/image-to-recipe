@@ -1,6 +1,5 @@
 import os
 
-import openai
 import requests
 import streamlit as st
 from dotenv import find_dotenv, load_dotenv
@@ -8,15 +7,13 @@ from langchain.chains import LLMChain
 from langchain.chat_models import ChatOpenAI
 from langchain.llms import OpenAI
 from langchain.prompts import PromptTemplate
-from transformers import (
-    pipeline,  
-)
+from transformers import pipeline
 
 load_dotenv(find_dotenv())
-openai.api_key = os.getenv("OPENAI_API_KEY")
+OpenAI.api_key = os.getenv("OPENAI_API_KEY")
 HUGGINFACE_HUB_API_TOKEN = os.getenv("HUGGINFACE_HUB_API_TOKEN")
 
-llm_model = "gpt-4" 
+llm_model = "gpt-4"
 
 
 # 1. Image to text implementation (aka image captioning) with huggingface
