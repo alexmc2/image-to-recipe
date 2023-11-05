@@ -1,5 +1,5 @@
 import os
-
+import openai
 import requests
 import streamlit as st
 from dotenv import find_dotenv, load_dotenv
@@ -10,7 +10,7 @@ from langchain.prompts import PromptTemplate
 from transformers import pipeline
 
 load_dotenv(find_dotenv())
-OpenAI.api_key = os.getenv("OPENAI_API_KEY")
+openai.api_key = os.getenv("OPENAI_API_KEY")
 HUGGINFACE_HUB_API_TOKEN = os.getenv("HUGGINFACE_HUB_API_TOKEN")
 
 llm_model = "gpt-4"
@@ -21,7 +21,7 @@ def image_to_text(url):
     pipe = pipeline(
         "image-to-text",
         model="Salesforce/blip-image-captioning-large",
-        max_new_tokens=1000,
+        max_new_tokens=2000,
     )
 
     text = pipe(url)[0]["generated_text"]
