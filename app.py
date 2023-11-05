@@ -1,36 +1,53 @@
+import io
 import os
+
 import openai
 import requests
 import streamlit as st
+import torch
 from dotenv import find_dotenv, load_dotenv
 from langchain.chains import LLMChain
 from langchain.chat_models import ChatOpenAI
 from langchain.llms import OpenAI
 from langchain.prompts import PromptTemplate
-from transformers import pipeline
+from PIL import Image
+from transformers import AutoTokenizer, VisionEncoderDecoderModel, ViTImageProcessor
 
 load_dotenv(find_dotenv())
 openai.api_key = os.getenv("OPENAI_API_KEY")
 HUGGINFACE_HUB_API_TOKEN = os.getenv("HUGGINFACE_HUB_API_TOKEN")
 
 llm_model = "gpt-4"
+model_name = "nlpconnect/vit-gpt2-image-captioning"
+
+# Load the Vision-Encoder-Decoder model
+model = VisionEncoderDecoderModel.from_pretrained(model_name)
+feature_extractor = ViTImageProcessor.from_pretrained(model_name)
+tokenizer = AutoTokenizer.from_pretrained(model_name)
+
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+model.to(device)
 
 
-# 1. Image to text implementation (aka image captioning) with huggingface
-def image_to_text(url):
-    pipe = pipeline(
-        "image-to-text",
-        model="Salesforce/blip-image-captioning-large",
-        max_new_tokens=2000,
-    )
+# New image to text implementation using the Vision-Encoder-Decoder model
+def image_to_text(image_stream):
+    image = Image.open(image_stream)
+    if image.mode != "RGB":
+        image = image.convert("RGB")
 
-    text = pipe(url)[0]["generated_text"]
-    print(f"Image Captioning:: {text}")
-    return text
+    pixel_values = feature_extractor(images=image, return_tensors="pt").pixel_values
+    pixel_values = pixel_values.to(device)
+
+    gen_kwargs = {"max_length": 16, "num_beams": 4}
+    output_ids = model.generate(pixel_values, **gen_kwargs)
+
+    preds = tokenizer.decode(output_ids[0], skip_special_tokens=True)
+    print(f"Image Captioning:: {preds}")
+    return preds
 
 
 # 2. llm - generate a recipe from the image text
-llm = ChatOpenAI(temperature=0.7, model=llm_model)
+llm = ChatOpenAI(temperature=0.2, model=llm_model)
 
 
 def generate_recipe(ingredients):
@@ -102,29 +119,21 @@ def text_to_speech(text):
 
 
 def main():
-    # caption = image_to_text(url="mango_fruits.jpeg")
-    # # print(caption)
-    # # audio = text_to_speech(text=caption)
-    # # with open("audio.flac", "wb") as file:
-    # #     file.write(audio)
-    # recipe = generate_recipe(ingredients=caption)
-    # print(recipe)
-
     st.title("Alex's Image To Recipe App")
     st.header("Upload an image and get a recipe")
 
     upload_file = st.file_uploader("Choose an image:", type=["jpg", "png"])
 
     if upload_file is not None:
-        print(upload_file)
-        file_bytes = upload_file.getvalue()
-        with open(upload_file.name, "wb") as file:
-            file.write(file_bytes)
+        # Convert the uploaded file to a bytes-like object for PIL to read
+        image_bytes = io.BytesIO(upload_file.getvalue())
 
         st.image(
-            upload_file, caption="The uploaded image", use_column_width=True, width=250
+            image_bytes, caption="The uploaded image", use_column_width=True, width=250
         )
-        ingredients = image_to_text(upload_file.name)
+
+        # Use the in-memory image file for captioning
+        ingredients = image_to_text(image_bytes)
         audio = text_to_speech(ingredients)
         with open("audio.flac", "wb") as file:
             file.write(audio)
